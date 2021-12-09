@@ -1,11 +1,16 @@
+// using System.Reflection.PortableExecutable;
+using System.Numerics;
 using System.Diagnostics;
 using UnityEngine;
+//using System;
 using System.Collections.Generic;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
-// author: Steven Clark
-// steven.p.clark@gmail.com
-// 2012/05/17
+using Vector3 = UnityEngine.Vector3;
+using Object= UnityEngine.Object;
+using Random=UnityEngine.Random;
+
+
 
 public class TerrainScript : MonoBehaviour {
 	class Node {
@@ -13,7 +18,7 @@ public class TerrainScript : MonoBehaviour {
 		public Vector3 parentPos;
 		public int parentInd;
 		public GameObject line = null;
-		public float heightOffset = 60f; //lift up a little to prevent clipping
+		public float heightOffset = 0.5f; //lift up a little to prevent clipping
 		
 		public Node(Vector3 _pos, Vector3 _parentPos, int _parentInd, GameObject obj) {
 			pos = _pos;
@@ -46,6 +51,7 @@ public class TerrainScript : MonoBehaviour {
 	private Vector3 terrainSize; //remember, Y is height
 	private float minX, maxX, minZ, maxZ, minHeight, maxHeight;
 	private List<Node> nodes = new List<Node>();
+	//private Vector3 obstaclepos;
 	private GameObject start;
 	private GameObject goal;
 	private bool solving = false;
@@ -65,11 +71,16 @@ public class TerrainScript : MonoBehaviour {
 	
 	private float pGoToGoal = 0.1f;
 	private const int MAX_NUM_NODES = 10000;
-	
+    public GameObject[] gameObjects;
+	//public Vector3[] obstaclescoords;
 	private float pathCost;
-	
+	public List<Vector3> obstacleCoord;
+	public List<List<Vector3>> obstaclesList = new List<List<Vector3>>();
+	//public List<List> obstacles
 	public static Object linePrefab;
 	public static Object pathPrefab;
+	public Vector3 ScaleofObs;
+	public int k=0;
 	
 	// Use this for initialization
 	void Start () {
@@ -79,8 +90,7 @@ public class TerrainScript : MonoBehaviour {
 		goal = GameObject.Find("Goal");
 		
 		linePrefab = Resources.Load("LinePrefab");
-		pathPrefab = Resources.Load("PathPrefab");
-		
+		pathPrefab = Resources.Load("PathPrefab");	
 		terrainSize = Terrain.activeTerrain.terrainData.size;
 		//minX = -terrainSize.x/2;
 		minX = 2;
@@ -93,7 +103,38 @@ public class TerrainScript : MonoBehaviour {
 		maxHeight = terrainSize.y;
 		stepSize = Mathf.Min(terrainSize.x, terrainSize.z) / 100; //TODO experiment
 		
-		Debug.Log("minX" + minX + " " + "maxX" + maxX + " " + "minZ" + minZ + " " + "maxZ" + maxZ + " " + minHeight + " " + maxHeight + " " + "terrainSize" + terrainSize);
+		// Debug.Log("minX" + minX + " " + "maxX" + maxX + " " + "minZ" + minZ + " " + "maxZ" + maxZ + " " + minHeight + " " + maxHeight + " " + "terrainSize" + terrainSize);
+		Vector3 cubeposcoord0, cubeposcoord1, cubeposcoord2, cubeposcoord3;
+		
+		GameObject[] gameObjects  = GameObject.FindGameObjectsWithTag("Cube");
+		foreach (GameObject go in gameObjects)
+        {
+            Vector3 cubecentre = go.transform.position;
+			Vector3 scalecube = go.transform.localScale;
+			// Debug.Log("scale" + scalecube);
+			
+			cubeposcoord3.x=cubecentre.x + 50;
+			cubeposcoord3.y=0;
+			cubeposcoord3.z=cubecentre.z - 50;
+			cubeposcoord0.x=cubeposcoord3.x - 100;
+			cubeposcoord0.z=cubeposcoord3.z;
+		    cubeposcoord0.y=cubeposcoord1.y=cubeposcoord2.y=cubeposcoord3.y;
+		    cubeposcoord1.x=cubeposcoord3.x- 100;
+		    cubeposcoord1.z=cubeposcoord3.z+100;
+		    cubeposcoord2.x=cubeposcoord3.x;
+		    cubeposcoord2.z=cubeposcoord3.z + 100;
+            // Debug.Log("cube coordinates" + cubeposcoord0 + cubeposcoord1 + cubeposcoord2 + cubeposcoord3);
+			obstacleCoord.Add(cubeposcoord0);
+			obstacleCoord.Add(cubeposcoord1);
+			obstacleCoord.Add(cubeposcoord2);
+			obstacleCoord.Add(cubeposcoord3);
+			obstaclesList.Add(obstacleCoord);
+			// Debug.Log("obstacles" + obstacles[k]);
+			// Debug.Log("obstacle x coord" + obstacles[0][0].x);
+			k++;
+			// Debug.Log(k);
+		}
+		
 	}
 	
 	// Update is called once per frame
@@ -185,11 +226,23 @@ public class TerrainScript : MonoBehaviour {
 		
 		while(i != 0) {
 			n = nodes[i];
+			for (int j=0; j<nodes.Count; j++)
+			{
+				Debug.Log("nodes[i]" + nodes[j]);
+			}
+			if(!isLineinsideObstacle(n)){
 			n.ConvertToPath();
 			
 			pathCost += GetSegmentCost(n.parentPos, n.pos);
 			
 			i = n.parentInd;
+			}
+			else
+			{
+                nodes.RemoveAt(i);
+				GameObject.Destroy(nodes[i-1].line);  
+				continue;
+			}
 		}
 		
 		statusText.text = "Solved! with " + nodes.Count + " nodes, cost=" + pathCost;
@@ -210,6 +263,55 @@ public class TerrainScript : MonoBehaviour {
 		
 		return cost;
 	}
+	bool isNodeinsideObstacle(Node n)
+	{
+		//we check whether node lies inside the obstacle
+		for (int j=0; j<k; j++)
+		{
+			Debug.Log("checking node co-ordinate for obstacle" + n.pos.x + n.pos.z);
+			Debug.Log("obstaclesList[j][0]" + obstaclesList[j][0]);
+			Debug.Log("obstaclesList[j][3]" + obstaclesList[j][3]);
+			if ((n.pos.x>=obstaclesList[j][0].x && n.pos.x<=obstaclesList[j][3].x)&&(n.pos.z>=obstaclesList[j][0].z && n.pos.z<=obstaclesList[j][1].z))
+			{
+				Debug.Log("Node generated inside obstacle");
+				//n.RemoveAt(n);
+				
+				return true;
+				break;
+			}
+			
+		}
+		return false;
+	}
+	bool isLineinsideObstacle(Node n){
+
+		float x1=n.parentPos.x;
+		float y1=n.parentPos.y;
+		float x2=n.pos.x;
+		float y2=n.pos.y;
+		float dy = y2-y1;
+		float dx= x2-x1;
+		float theta= Mathf.Atan2(dy, dx);
+		
+		
+		float x=x1+(float)0.5*Mathf.Cos(theta);
+	    float y=y1+(float)0.5*Mathf.Sin(theta);
+		//we are checking whether line joining 2 nodes lies inside obstacle
+		for (int j=0; j<k; j++)
+		{
+			if ((x>=obstaclesList[j][0].x && x<=obstaclesList[j][3].x)&&(y>=obstaclesList[j][0].z && y<=obstaclesList[j][1].z))
+			{
+				Debug.Log("line or path  is Crossing obstacle");
+			
+				return true;
+				break;
+			}
+			x=x+(float)0.5*Mathf.Cos(theta);
+			y=y+(float)0.5*Mathf.Sin(theta);	
+		}
+		
+		return false;
+	}
 	
 	void TRRTGrow () {
 		int numAttempts = 0;
@@ -223,9 +325,8 @@ public class TerrainScript : MonoBehaviour {
 		float distSq;
 		
 		bool goingToGoal;
-		
-		Vector3 cubepos=GameObject.Find("Cube").transform.position;
-		Debug.Log("cubepos" + cubepos);
+		// Debug.Log ("check vertices" + newPos);
+
 		while(numAttempts < solvingSpeed && nodes.Count < MAX_NUM_NODES) {
 			if(needNewTarget) {
 				if(Random.value < pGoToGoal) {
@@ -263,7 +364,7 @@ public class TerrainScript : MonoBehaviour {
 						continue;
 					}
 				}
-				
+				//Debug.Log("obstacles" + obstacles[0]);
 				//Debug.Log("closestInd: " + closestInd);
 				
 				dx = tx - nodes[closestInd].pos.x;
@@ -278,11 +379,13 @@ public class TerrainScript : MonoBehaviour {
 			pos.y = Terrain.activeTerrain.SampleHeight(pos); //get y value from terrain
 			
 			if(TransitionTest(nodes[closestInd].pos, pos)) {
-			
+			    
 				n = new Node(pos, nodes[closestInd].pos, closestInd, gameObject);
+				if(!((isNodeinsideObstacle(n))&&(isLineinsideObstacle(n))))
+				{
 				nodes.Add(n);
-				
-				//Debug.Log("Added node " + nodes.Count + ": " + n.pos.x + ", " + n.pos.y + ", " + n.pos.z);
+				Debug.Log("Added node " + nodes.Count + ": " + n.pos.x + ", " + n.pos.y + ", " + n.pos.z);
+				}
 				
 				//Determine whether we are close enough to goal
 				dx = goal.transform.position.x - n.pos.x;

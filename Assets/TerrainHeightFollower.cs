@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 
 public class TerrainHeightFollower : MonoBehaviour {
-	public float heightOffset = 100.0f;
+	public float heightOffset = 0.5f;
 
 	// Use this for initialization
 	void Start () {
