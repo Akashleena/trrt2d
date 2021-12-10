@@ -59,7 +59,7 @@ public class TerrainScript : MonoBehaviour {
 	
 	private float tx = 0f, tz = 0f; //target location to expand towards
 	private bool needNewTarget = true; //keep track of whether our random sample is expired or still valid
-	private int closestInd = 0;
+	private int closestInd = 0; //the last node in the tree (the node before goal node)
 	private int goalInd = 0; //when success is achieved, remember which node is close to goal
 	private float extendAngle = 0f;
 	
@@ -72,8 +72,8 @@ public class TerrainScript : MonoBehaviour {
 	private float pGoToGoal = 0.1f;
 	private const int MAX_NUM_NODES = 10000;
     public GameObject[] gameObjects;
-	//public Vector3[] obstaclescoords;
-	private float pathCost;
+	
+	private float pathCost=0;
 	public List<Vector3> obstacleCoord;
 	public List<List<Vector3>> obstaclesList = new List<List<Vector3>>();
 	//public List<List> obstacles
@@ -84,6 +84,8 @@ public class TerrainScript : MonoBehaviour {
 	
 	// Use this for initialization
 	void Start () {
+
+		//This goes in the canvas
 		coordText = GameObject.Find("Coordinate Text").GetComponent<Text>();
 		statusText = GameObject.Find("Status Text").GetComponent<Text>();
 		start = GameObject.Find("Start");
@@ -113,6 +115,8 @@ public class TerrainScript : MonoBehaviour {
 			Vector3 scalecube = go.transform.localScale;
 			// Debug.Log("scale" + scalecube);
 			
+			//getting the coordinates of the corners of the square obstacles
+			//cubeposcoord3.x=cubecentre.x + (scalecube/2);
 			cubeposcoord3.x=cubecentre.x + 50;
 			cubeposcoord3.y=0;
 			cubeposcoord3.z=cubecentre.z - 50;
@@ -214,7 +218,7 @@ public class TerrainScript : MonoBehaviour {
 	
 	
 	void FoundGoal() {
-		goalInd = closestInd;
+		goalInd = closestInd; 
 		solving = false;
 		
 		
@@ -226,30 +230,23 @@ public class TerrainScript : MonoBehaviour {
 		
 		while(i != 0) {
 			n = nodes[i];
-			for (int j=0; j<nodes.Count; j++)
-			{
-				Debug.Log("nodes[i]" + nodes[j]);
-			}
-			if(!isLineinsideObstacle(n)){
+			
+			Debug.Log("node co-ordinates of the green line " + nodes[i]);
+			
+			
 			n.ConvertToPath();
 			
 			pathCost += GetSegmentCost(n.parentPos, n.pos);
 			
 			i = n.parentInd;
-			}
-			else
-			{
-                nodes.RemoveAt(i);
-				GameObject.Destroy(nodes[i-1].line);  
-				continue;
-			}
+		
 		}
 		
 		statusText.text = "Solved! with " + nodes.Count + " nodes, cost=" + pathCost;
 	}
 	
 	float GetSegmentCost(Vector3 posA, Vector3 posB) {
-		float dCost = posB.y - posA.y;
+		//float dCost = posB.y - posA.y; // this y co-ordinate was considered for terrain height
 		float dx = posB.x - posA.x;
 		float dz = posB.z - posA.z;
 		
@@ -257,24 +254,24 @@ public class TerrainScript : MonoBehaviour {
 		
 		float cost = 0.001f*dist; //arbitrary, small distance component
 		
-		if(dCost > 0) {
-			cost += dist*dCost;
-		}
+		//if(dCost > 0) {
+			//cost += dist*dCost;
+		//}
 		
 		return cost;
 	}
-	bool isNodeinsideObstacle(Node n)
+	bool isNodeinsideObstacle(Vector3 pos1)
 	{
 		//we check whether node lies inside the obstacle
 		for (int j=0; j<k; j++)
 		{
-			Debug.Log("checking node co-ordinate for obstacle" + n.pos.x + n.pos.z);
-			Debug.Log("obstaclesList[j][0]" + obstaclesList[j][0]);
-			Debug.Log("obstaclesList[j][3]" + obstaclesList[j][3]);
-			if ((n.pos.x>=obstaclesList[j][0].x && n.pos.x<=obstaclesList[j][3].x)&&(n.pos.z>=obstaclesList[j][0].z && n.pos.z<=obstaclesList[j][1].z))
+			// Debug.Log("checking node co-ordinate for obstacle" + pos1.x + pos1.z);
+			// Debug.Log("obstaclesList[j][0]" + obstaclesList[j][0]);
+			// Debug.Log("obstaclesList[j][3]" + obstaclesList[j][3]);
+			if ((pos1.x>=obstaclesList[j][0].x && pos1.x<=obstaclesList[j][3].x)&&(pos1.z>=obstaclesList[j][0].z && pos1.z<=obstaclesList[j][1].z))
 			{
-				Debug.Log("Node generated inside obstacle");
-				//n.RemoveAt(n);
+				Debug.Log("new Node will be generated inside obstacle so we don't add it to the nodes list");
+				
 				
 				return true;
 				break;
@@ -283,18 +280,18 @@ public class TerrainScript : MonoBehaviour {
 		}
 		return false;
 	}
-	bool isLineinsideObstacle(Node n){
+	bool isLineinsideObstacle(Vector3 pos1, Vector3 parentpos1){
 
-		float x1=n.parentPos.x;
-		float y1=n.parentPos.y;
-		float x2=n.pos.x;
-		float y2=n.pos.y;
+		float x1=parentpos1.x;
+		float y1=parentpos1.y;
+		float x2=pos1.x;
+		float y2=pos1.y;
 		float dy = y2-y1;
 		float dx= x2-x1;
 		float theta= Mathf.Atan2(dy, dx);
 		
 		
-		float x=x1+(float)0.5*Mathf.Cos(theta);
+		float x=x1+(float)0.5*Mathf.Cos(theta); //create sample points on the line joining co-ordinates (x1,y1) and (x2,y2) and check if these sample points lie inside the obstacle
 	    float y=y1+(float)0.5*Mathf.Sin(theta);
 		//we are checking whether line joining 2 nodes lies inside obstacle
 		for (int j=0; j<k; j++)
@@ -327,7 +324,8 @@ public class TerrainScript : MonoBehaviour {
 		bool goingToGoal;
 		// Debug.Log ("check vertices" + newPos);
 
-		while(numAttempts < solvingSpeed && nodes.Count < MAX_NUM_NODES) {
+		while(numAttempts < solvingSpeed && nodes.Count < MAX_NUM_NODES) 
+		{
 			if(needNewTarget) {
 				if(Random.value < pGoToGoal) {
 					goingToGoal = true;
@@ -379,35 +377,43 @@ public class TerrainScript : MonoBehaviour {
 			pos.y = Terrain.activeTerrain.SampleHeight(pos); //get y value from terrain
 			
 			if(TransitionTest(nodes[closestInd].pos, pos)) {
-			    
-				n = new Node(pos, nodes[closestInd].pos, closestInd, gameObject);
-				if(!((isNodeinsideObstacle(n))&&(isLineinsideObstacle(n))))
+			    if (!(isNodeinsideObstacle(pos)))
 				{
-				nodes.Add(n);
-				Debug.Log("Added node " + nodes.Count + ": " + n.pos.x + ", " + n.pos.y + ", " + n.pos.z);
-				}
+					if (!(isLineinsideObstacle(pos,nodes[closestInd].pos)))
+					{
+					n = new Node(pos, nodes[closestInd].pos, closestInd, gameObject);
+					nodes.Add(n);
+					Debug.Log("Added node " + nodes.Count + ": " + n.pos.x + ", " + n.pos.y + ", " + n.pos.z);
+
 				
+		
 				//Determine whether we are close enough to goal
-				dx = goal.transform.position.x - n.pos.x;
-				dz = goal.transform.position.z - n.pos.z;
-				if(Mathf.Sqrt(dx*dx + dz*dz) <= stepSize) {
+					dx = goal.transform.position.x - n.pos.x;
+					dz = goal.transform.position.z - n.pos.z;
+					if(Mathf.Sqrt(dx*dx + dz*dz) <= stepSize) {
 					//Reached the goal!
 					FoundGoal();
 					return;
-				}
+					}
 				
 				//Determine whether we are close enough to target, or need to keep extending
-				dx = tx - n.pos.x;
-				dz = tz - n.pos.z;
-				if(Mathf.Sqrt(dx*dx + dz*dz) <= stepSize) {
+					dx = tx - n.pos.x;
+					dz = tz - n.pos.z;
+					if(Mathf.Sqrt(dx*dx + dz*dz) <= stepSize) {
 					//we've reached our target point, need a new target
 					needNewTarget = true;
-				} else {
+					} 
+					else 
+					{
 					//keep extending from the latest node
 					closestInd = nodes.Count - 1;
+					}
+					numAttempts++;
 				}
-				numAttempts++;
-			} else {
+				}
+			} 
+			
+			else {
 				//this extension is aborted due to transition test, need a new target
 				//Debug.Log("Failed transition test");
 				needNewTarget = true;
@@ -424,26 +430,36 @@ public class TerrainScript : MonoBehaviour {
 		
 		float pTransition; //transition probability, 0 to 1
 		
-		if(slope <= 0) {
+		if(slope <= 0) 
+		{
 			//pTransition = 1.0f; //always go "downhill"
 			pTransition = 0.5f; 
-		} else {
+		} 
+		else 
+		{
 			pTransition = Mathf.Exp(-slope/(temperature)); //FIXME
 		}
 		
 		bool pass = Random.value < pTransition;
 		
-		if(!pass) {
-			if(numTransitionFails > MAX_TRANSITION_FAILS) {
+		if(!pass) 
+		{
+			if(numTransitionFails > MAX_TRANSITION_FAILS) 
+			{
 				//Heat the temperature up
 				temperature = temperature * temperatureAdjustFactor;
 				numTransitionFails = 0; //restart counter
-			} else {
+			} 
+			else 
+			{
 				numTransitionFails++;
 			}
-		} else {
+		} 
+		else 
+		{
 			//Cool the temperature down
-			if(temperature > MIN_TEMPERATURE) { //prevent slim chance of temp becoming 0
+			if(temperature > MIN_TEMPERATURE) 
+			{ //prevent slim chance of temp becoming 0
 				temperature = temperature / temperatureAdjustFactor;
 			}
 			numTransitionFails = 0;	
