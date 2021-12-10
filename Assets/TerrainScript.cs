@@ -75,7 +75,7 @@ public class TerrainScript : MonoBehaviour {
 	
 	private float pathCost=0;
 	public List<Vector3> obstacleCoord;
-	public List<List<Vector3>> obstaclesList = new List<List<Vector3>>();
+	// public List<List<Vector3>> obstaclesList = new List<List<Vector3>>();
 	//public List<List> obstacles
 	public static Object linePrefab;
 	public static Object pathPrefab;
@@ -132,12 +132,20 @@ public class TerrainScript : MonoBehaviour {
 			obstacleCoord.Add(cubeposcoord1);
 			obstacleCoord.Add(cubeposcoord2);
 			obstacleCoord.Add(cubeposcoord3);
-			obstaclesList.Add(obstacleCoord);
+			// obstaclesList.Add(obstacleCoord);
 			// Debug.Log("obstacles" + obstacles[k]);
 			// Debug.Log("obstacle x coord" + obstacles[0][0].x);
 			k++;
 			// Debug.Log(k);
 		}
+
+		// for(int i = 0; i < k; i++) {
+		// 	Debug.Log("Printing " + i + " element");
+		// 	int len = obstaclesList[i].Count;
+		// 	for(int j = 0; j < len; j++) {
+		// 		Debug.Log(obstaclesList[i][j]);
+		// 	}
+		// }
 		
 	}
 	
@@ -268,13 +276,13 @@ public class TerrainScript : MonoBehaviour {
 			// Debug.Log("checking node co-ordinate for obstacle" + pos1.x + pos1.z);
 			// Debug.Log("obstaclesList[j][0]" + obstaclesList[j][0]);
 			// Debug.Log("obstaclesList[j][3]" + obstaclesList[j][3]);
-			if ((pos1.x>=obstaclesList[j][0].x && pos1.x<=obstaclesList[j][3].x)&&(pos1.z>=obstaclesList[j][0].z && pos1.z<=obstaclesList[j][1].z))
+			if ((pos1.x>=obstacleCoord[j * 4 + 0].x && pos1.x<=obstacleCoord[j * 4 + 2].x)&&(pos1.z>=obstacleCoord[j * 4 + 0].z && pos1.z<=obstacleCoord[j * 4 + 2].z))
 			{
 				Debug.Log("new Node will be generated inside obstacle so we don't add it to the nodes list");
 				
 				
 				return true;
-				break;
+				// break;
 			}
 			
 		}
@@ -296,12 +304,12 @@ public class TerrainScript : MonoBehaviour {
 		//we are checking whether line joining 2 nodes lies inside obstacle
 		for (int j=0; j<k; j++)
 		{
-			if ((x>=obstaclesList[j][0].x && x<=obstaclesList[j][3].x)&&(y>=obstaclesList[j][0].z && y<=obstaclesList[j][1].z))
+			if ((pos1.x>=obstacleCoord[j * 4 + 0].x && pos1.x<=obstacleCoord[j * 4 + 2].x)&&(pos1.z>=obstacleCoord[j * 4 + 0].z && pos1.z<=obstacleCoord[j * 4 + 2].z))
 			{
 				Debug.Log("line or path  is Crossing obstacle");
 			
 				return true;
-				break;
+				// break;
 			}
 			x=x+(float)0.5*Mathf.Cos(theta);
 			y=y+(float)0.5*Mathf.Sin(theta);	
