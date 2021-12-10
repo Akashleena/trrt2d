@@ -75,6 +75,7 @@ public class TerrainScript : MonoBehaviour {
 	
 	private float pathCost=0;
 	public List<Vector3> obstacleCoord;
+	
 	// public List<List<Vector3>> obstaclesList = new List<List<Vector3>>();
 	//public List<List> obstacles
 	public static Object linePrefab;
@@ -116,17 +117,16 @@ public class TerrainScript : MonoBehaviour {
 			// Debug.Log("scale" + scalecube);
 			
 			//getting the coordinates of the corners of the square obstacles
-			//cubeposcoord3.x=cubecentre.x + (scalecube/2);
-			cubeposcoord3.x=cubecentre.x + 50;
+			cubeposcoord3.x=cubecentre.x + (scalecube.x/2);
 			cubeposcoord3.y=0;
-			cubeposcoord3.z=cubecentre.z - 50;
-			cubeposcoord0.x=cubeposcoord3.x - 100;
+			cubeposcoord3.z=cubecentre.z - (scalecube.z/2);
+			cubeposcoord0.x=cubeposcoord3.x - scalecube.x;
 			cubeposcoord0.z=cubeposcoord3.z;
 		    cubeposcoord0.y=cubeposcoord1.y=cubeposcoord2.y=cubeposcoord3.y;
-		    cubeposcoord1.x=cubeposcoord3.x- 100;
-		    cubeposcoord1.z=cubeposcoord3.z+100;
+		    cubeposcoord1.x=cubeposcoord3.x- scalecube.x;
+		    cubeposcoord1.z=cubeposcoord3.z + scalecube.x;
 		    cubeposcoord2.x=cubeposcoord3.x;
-		    cubeposcoord2.z=cubeposcoord3.z + 100;
+		    cubeposcoord2.z=cubeposcoord3.z + scalecube.z;
             // Debug.Log("cube coordinates" + cubeposcoord0 + cubeposcoord1 + cubeposcoord2 + cubeposcoord3);
 			obstacleCoord.Add(cubeposcoord0);
 			obstacleCoord.Add(cubeposcoord1);
